@@ -14,6 +14,22 @@ comment
   <+> many (is '-') <+> reject (is '}')  -- not a closing delimiter
   <+> many (isNot '\n')                  -- till the end of line
 
+export
+isOpChar : Char -> Bool
+isOpChar c = inLatin || inArrows || inMathematicalOperators
+  where
+    inRange : (Int, Int) -> Lazy Bool
+    inRange (lowerBound, upperBound) = (c >= chr lowerBound && c <= chr upperBound)
+    inLatin : Bool
+    inLatin = c `elem` (unpack ":!#$%&*+./<=>?@\\^|-~")
+    inArrows : Bool
+    inArrows = inRange (8592, 8703)
+    inMathematicalOperators : Bool
+    inMathematicalOperators = inRange (8704, 8959)
+
+nonOpCharUnicode : Char -> Bool
+nonOpCharUnicode c = (c > chr 160) && not (isOpChar c)
+
 -- Identifier Lexer
 -- There are multiple variants.
 
@@ -22,14 +38,14 @@ data Flavour = AllowDashes | Capitalised | Normal
 
 isIdentStart : Flavour -> Char -> Bool
 isIdentStart _           '_' = True
-isIdentStart Capitalised  x  = isUpper x || x > chr 160
-isIdentStart _            x  = isAlpha x || x > chr 160
+isIdentStart Capitalised  x  = isUpper x || nonOpCharUnicode x
+isIdentStart _            x  = isAlpha x || nonOpCharUnicode x
 
 isIdentTrailing : Flavour -> Char -> Bool
 isIdentTrailing AllowDashes '-'  = True
 isIdentTrailing _           '\'' = True
 isIdentTrailing _           '_'  = True
-isIdentTrailing _            x   = isAlphaNum x || x > chr 160
+isIdentTrailing _            x   = isAlphaNum x || nonOpCharUnicode x
 
 export %inline
 isIdent : Flavour -> String -> Bool

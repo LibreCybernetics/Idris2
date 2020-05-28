@@ -162,10 +162,6 @@ symbols
        "(", ")", "{", "}}", "}", "[", "]", ",", ";", "_",
        "`(", "`{{", "`[", "`"]
 
-export
-isOpChar : Char -> Bool
-isOpChar c = c `elem` (unpack ":!#$%&*+./<=>?@\\^|-~")
-
 validSymbol : Lexer
 validSymbol = some (pred isOpChar)
 
@@ -175,7 +171,7 @@ reservedSymbols : List String
 reservedSymbols
     = symbols ++
       ["%", "\\", ":", "=", "|", "|||", "<-", "->", "=>", "?", "!",
-       "&", "**", "..", "~"]
+       "&", "**", "..", "~", "←", "→", "⇒"]
 
 fromHexLit : String -> Integer
 fromHexLit str

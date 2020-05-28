@@ -48,6 +48,15 @@ plhs = MkParseOpts False False
 %hide Prelude.pure
 %hide Core.Core.pure
 
+leftArrow : Rule ()
+leftArrow = symbol "<-" <|> symbol "←"
+
+rightArrow : Rule ()
+rightArrow = symbol "->" <|> symbol "→"
+
+doubleRightArrow : Rule ()
+doubleRightArrow = symbol "=>" <|> symbol "⇒"
+
 atom : FileName -> Rule PTerm
 atom fname
     = do (start, end) <- position
@@ -520,9 +529,9 @@ mutual
 
   bindSymbol : Rule (PiInfo PTerm)
   bindSymbol
-      = do symbol "->"
+      = do rightArrow
            pure Explicit
-    <|> do symbol "=>"
+    <|> do doubleRightArrow
            pure AutoImplicit
 
 
@@ -545,7 +554,7 @@ mutual
            commit
            binders <- pibindList fname start indents
            symbol "}"
-           symbol "->"
+           rightArrow
            scope <- typeExpr pdef fname indents
            end <- pure $ endPos $ getPTermLoc scope
            pure (pibindAll (MkFC fname start end) AutoImplicit binders scope)
@@ -559,7 +568,7 @@ mutual
            t <- simpleExpr fname indents
            binders <- pibindList fname start indents
            symbol "}"
-           symbol "->"
+           rightArrow
            scope <- typeExpr pdef fname indents
            end <- pure $ endPos $ getPTermLoc scope
            pure (pibindAll (MkFC fname start end) (DefImplicit t) binders scope)
@@ -586,7 +595,7 @@ mutual
            symbol "{"
            binders <- pibindList fname start indents
            symbol "}"
-           symbol "->"
+           rightArrow
            scope <- typeExpr pdef fname indents
            end <- pure $ endPos $ getPTermLoc scope
            pure (pibindAll (MkFC fname start end) Implicit binders scope)
@@ -596,7 +605,7 @@ mutual
       = do start <- location
            symbol "\\"
            binders <- bindList fname start indents
-           symbol "=>"
+           doubleRightArrow
            mustContinue indents Nothing
            scope <- expr pdef fname indents
            end <- pure $ endPos $ getPTermLoc scope
@@ -703,7 +712,7 @@ mutual
 
   caseRHS : FileName -> FilePos -> IndentInfo -> PTerm -> Rule PClause
   caseRHS fname start indents lhs
-      = do symbol "=>"
+      = do doubleRightArrow
            mustContinue indents Nothing
            rhs <- expr pdef fname indents
            end <- pure $ endPos $ getPTermLoc rhs
@@ -754,7 +763,7 @@ mutual
       -- this allows the dotted syntax .field
       -- but also the arrowed syntax ->field for compatibility with Idris 1
       recFieldCompat : Rule Name
-      recFieldCompat = dotIdent <|> (symbol "->" *> name)
+      recFieldCompat = dotIdent <|> (rightArrow *> name)
 
   rewrite_ : FileName -> IndentInfo -> Rule PTerm
   rewrite_ fname indents
@@ -802,7 +811,7 @@ mutual
            -- If the name doesn't begin with a lower case letter, we should
            -- treat this as a pattern, so fail
            validPatternVar n
-           symbol "<-"
+           leftArrow
            val <- expr pdef fname indents
            end <- pure $ endPos $ getPTermLoc val
            atEnd indents
@@ -829,7 +838,7 @@ mutual
            (do atEnd indents
                end <- pure $ endPos $ getPTermLoc e
                pure [DoExp (MkFC fname start end) e])
-             <|> (do symbol "<-"
+             <|> (do leftArrow
                      val <- expr pnowith fname indents
                      alts <- block (patAlt fname)
                      end <- location
@@ -1339,7 +1348,7 @@ getRight (Right v) = Just v
 constraints : FileName -> IndentInfo -> SourceEmptyRule (List (Maybe Name, PTerm))
 constraints fname indents
     = do tm <- appExpr pdef fname indents
-         symbol "=>"
+         doubleRightArrow
          more <- constraints fname indents
          pure ((Nothing, tm) :: more)
   <|> do symbol "("
@@ -1347,7 +1356,7 @@ constraints fname indents
          symbol ":"
          tm <- expr pdef fname indents
          symbol ")"
-         symbol "=>"
+         doubleRightArrow
          more <- constraints fname indents
          pure ((Just n, tm) :: more)
   <|> pure []
@@ -1361,7 +1370,7 @@ implBinds fname indents
          symbol ":"
          tm <- expr pdef fname indents
          symbol "}"
-         symbol "->"
+         rightArrow
          more <- implBinds fname indents
          pure ((n, rig, tm) :: more)
   <|> pure []
