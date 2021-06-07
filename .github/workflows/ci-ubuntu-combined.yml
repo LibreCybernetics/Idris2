@@ -106,8 +106,8 @@ jobs:
             libs/test/build/
           key: ${{ runner.os }}-from-previous-version-${{ github.ref }}-${{ env.IDRIS2_VERSION }}
           restore-keys: |
-            ${{ runner.os }}-from-previous-version-main-${{ env.IDRIS2_VERSION }}
-            ${{ runner.os }}-from-previous-version-master-${{ env.IDRIS2_VERSION }}
+            ${{ runner.os }}-from-previous-version-refs/heads/main-${{ env.IDRIS2_VERSION }}
+            ${{ runner.os }}-from-previous-version-refs/heads/master-${{ env.IDRIS2_VERSION }}
       - name: Build from previous version
         run: make all && make install
 
@@ -155,8 +155,8 @@ jobs:
             libs/test/build/
           key: ${{ runner.os }}-self-host-from-chez-${{ github.ref }}-${{ env.TTC_VERSION }}
           restore-keys: |
-            ${{ runner.os }}-self-host-from-chez-main-${{ env.TTC_VERSION }}
-            ${{ runner.os }}-self-host-from-chez-master-${{ env.TTC_VERSION }}
+            ${{ runner.os }}-self-host-from-chez-refs/heads/main-${{ env.TTC_VERSION }}
+            ${{ runner.os }}-self-host-from-chez-refs/heads/master-${{ env.TTC_VERSION }}
 
       - name: Build self-hosted
         run: make all IDRIS2_BOOT="idris2 -Werror" && make install
@@ -197,8 +197,8 @@ jobs:
             libs/test/build/
           key: ${{ runner.os }}-self-host-from-racket-${{ github.ref }}-${{ env.TTC_VERSION }}
           restore-keys: |
-            ${{ runner.os }}-self-host-from-racket-main-${{ env.TTC_VERSION }}
-            ${{ runner.os }}-self-host-from-racket-master-${{ env.TTC_VERSION }}
+            ${{ runner.os }}-self-host-from-racket-refs/heads/main-${{ env.TTC_VERSION }}
+            ${{ runner.os }}-self-host-from-racket-refs/heads/master-${{ env.TTC_VERSION }}
 
       - name: Build self-hosted
         run: make all IDRIS2_BOOT="idris2 -Werror" && make install
@@ -239,8 +239,8 @@ jobs:
             libs/test/build/
           key: ${{ runner.os }}-self-host-from-previous-version-${{ github.ref }}-${{ env.TTC_VERSION }}
           restore-keys: |
-            ${{ runner.os }}-self-host-from-previous-version-main-${{ env.TTC_VERSION }}
-            ${{ runner.os }}-self-host-from-previous-version-master-${{ env.TTC_VERSION }}
+            ${{ runner.os }}-self-host-from-previous-version-refs/heads/main-${{ env.TTC_VERSION }}
+            ${{ runner.os }}-self-host-from-previous-version-refs/heads/master-${{ env.TTC_VERSION }}
 
       - name: Build self-hosted from previous version
         run: make all IDRIS2_BOOT="idris2 -Werror" && make install
@@ -286,8 +286,8 @@ jobs:
             libs/test/build/
           key: ${{ runner.os }}-build-api-${{ github.ref }}-${{ env.TTC_VERSION }}
           restore-keys: |
-            ${{ runner.os }}-build-api-main-${{ env.TTC_VERSION }}
-            ${{ runner.os }}-build-api-master-${{ env.TTC_VERSION }}
+            ${{ runner.os }}-build-api-refs/heads/main-${{ env.TTC_VERSION }}
+            ${{ runner.os }}-build-api-refs/heads/master-${{ env.TTC_VERSION }}
 
       - name: Build API
         run: make install-api
