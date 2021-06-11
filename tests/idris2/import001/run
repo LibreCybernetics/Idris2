@@ -1,6 +1,7 @@
 $1 --no-color --console-width 0 --no-banner --no-prelude Test.idr < input
 sleep 1
-touch Mult.idr
+echo " " >> Mult.idr
 $1 --no-color --console-width 0 --no-banner --no-prelude Test.idr < input
 
+git checkout HEAD -- Mult.idr
 rm -rf build

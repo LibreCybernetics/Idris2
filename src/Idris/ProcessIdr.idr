@@ -118,14 +118,14 @@ addImport imp
          readImport True imp
          setNS topNS
 
-readHash : {auto c : Ref Ctxt Defs} ->
-           {auto u : Ref UST UState} ->
-           Import -> Core (Bool, (Namespace, Int))
-readHash imp
-    = do Right fname <- nsToPath (loc imp) (path imp)
+readImportMeta : {auto c : Ref Ctxt Defs} ->
+              {auto u : Ref UST UState} ->
+              Import -> Core (Bool, (Namespace, Int))
+readImportMeta imp
+    = do Right ttcFileName <- nsToPath (loc imp) (path imp)
                | Left err => throw err
-         h <- readIFaceHash fname
-         pure (reexport imp, (nameAs imp, h))
+         (_, interfaceHash) <- readHashes ttcFileName
+         pure (reexport imp, (nameAs imp, interfaceHash))
 
 prelude : Import
 prelude = MkImport (MkFC (Virtual Interactive) (0, 0) (0, 0)) False
@@ -184,19 +184,6 @@ addPrelude imps
        then prelude :: imps
        else imps
 
--- Get a file's modified time. If it doesn't exist, return 0 (that is, it
--- was last modified at the dawn of time so definitely out of date for
--- rebuilding purposes...)
-modTime : String -> Core Integer
-modTime fname
-    = do Right f <- coreLift $ openFile fname Read
-             | Left err => pure 0 -- Beginning of Time :)
-         Right t <- coreLift $ fileModifiedTime f
-             | Left err => do coreLift $ closeFile f
-                              pure 0
-         coreLift $ closeFile f
-         pure (cast t)
-
 export
 readHeader : {auto c : Ref Ctxt Defs} ->
              {auto o : Ref ROpts REPLOpts} ->
@@ -223,64 +210,68 @@ addPublicHash : {auto c : Ref Ctxt Defs} ->
 addPublicHash (True, (mod, h)) = do addHash mod; addHash h
 addPublicHash _ = pure ()
 
--- Process everything in the module; return the syntax information which
--- needs to be written to the TTC (e.g. exported infix operators)
--- Returns 'Nothing' if it didn't reload anything
+||| Process everything in the module; return the syntax information which
+||| needs to be written to the TTC (e.g. exported infix operators)
+||| Returns 'Nothing' if it didn't reload anything
 processMod : {auto c : Ref Ctxt Defs} ->
              {auto u : Ref UST UState} ->
              {auto s : Ref Syn SyntaxInfo} ->
              {auto m : Ref MD Metadata} ->
              {auto o : Ref ROpts REPLOpts} ->
-             (srcf : String) -> (ttcf : String) -> (msg : Doc IdrisAnn) ->
-             (sourcecode : String) -> (origin : ModuleIdent) ->
+             (sourceFileName : String) ->
+             (ttcFileName : String) ->
+             (msg : Doc IdrisAnn) ->
+             (sourcecode : String) ->
+             (origin : ModuleIdent) ->
              Core (Maybe (List Error))
-processMod srcf ttcf msg sourcecode origin
+processMod sourceFileName ttcFileName msg sourcecode origin
     = catch (do
         setCurrentElabSource sourcecode
         -- Just read the header to start with (this is to get the imports and
         -- see if we can avoid rebuilding if none have changed)
-        modh <- readHeader srcf origin
+        moduleHeader <- readHeader sourceFileName origin
         -- Add an implicit prelude import
-        let imps =
-             if (noprelude !getSession || moduleNS modh == nsAsModuleIdent preludeNS)
-                then imports modh
-                else addPrelude (imports modh)
+        let imports =
+          if (noprelude !getSession || moduleNS moduleHeader == nsAsModuleIdent preludeNS)
+             then imports moduleHeader
+             else addPrelude (imports moduleHeader)
 
-        hs <- traverse readHash imps
+        importsMetas <- traverse readImportMeta imports
+        let importsNSAndHashes = snd <$> importsMetas
+
         defs <- get Ctxt
         log "module.hash" 5 $ "Current hash " ++ show (ifaceHash defs)
-        log "module.hash" 5 $ show (moduleNS modh) ++ " hashes:\n" ++
-                show (sort (map snd hs))
-        imphs <- readImportHashes ttcf
-        log "module.hash" 5 $ "Old hashes from " ++ ttcf ++ ":\n" ++ show (sort imphs)
+        log "module.hash" 5 $ show (moduleNS moduleHeader) ++ " hashes:\n" ++
+          show (sort importsNSAndHashes)
+        imphs <- readImportHashes ttcFileName
+        log "module.hash" 5 $ "Old hashes from " ++ ttcFileName ++ ":\n" ++ show (sort imphs)
 
-        -- If the old hashes are the same as the hashes we've just
-        -- read from the imports, and the source file is older than
-        -- the ttc, we can skip the rest.
-        srctime <- modTime srcf
-        ttctime <- modTime ttcf
+        let ns = moduleNS moduleHeader
 
-        let ns = moduleNS modh
+        -- If the source file hash hasn't changed AND the import interface
+        -- hashes are the same then no need to rebuild
+        sourceCodeHash <- hashFile sourceFileName
+        (ttcStoredSourceCodeHash, _) <- readHashes ttcFileName
 
-        if (sort (map snd hs) == sort imphs && srctime <= ttctime)
+        if (sort importsNSAndHashes == sort imphs && sourceCodeHash == ttcStoredSourceCodeHash)
            then -- Hashes the same, source up to date, just set the namespace
                 -- for the REPL
                 do setNS (miAsNamespace ns)
                    pure Nothing
            else -- needs rebuilding
              do iputStrLn msg
-                Right (decor, mod) <- logTime ("++ Parsing " ++ srcf) $
-                            pure (runParser (PhysicalIdrSrc origin) (isLitFile srcf) sourcecode (do p <- prog (PhysicalIdrSrc origin); eoi; pure p))
+                Right (decor, mod) <- logTime ("++ Parsing " ++ sourceFileName) $
+                            pure (runParser (PhysicalIdrSrc origin) (isLitFile sourceFileName) sourcecode (do p <- prog (PhysicalIdrSrc origin); eoi; pure p))
                       | Left err => pure (Just [err])
                 addSemanticDecorations decor
                 initHash
-                traverse_ addPublicHash (sort hs)
+                traverse_ addPublicHash (sort importsMetas)
                 resetNextVar
                 when (ns /= nsAsModuleIdent mainNS) $
                       when (ns /= origin) $
                           throw (GenericMsg mod.headerLoc
                                    ("Module name " ++ show ns ++
-                                    " does not match file name " ++ show srcf))
+                                    " does not match file name " ++ show sourceFileName))
 
                 -- read import ttcs in full here
                 -- Note: We should only import .ttc - assumption is that there's
@@ -288,7 +279,7 @@ processMod srcf ttcf msg sourcecode origin
                 -- (also that we only build child dependencies if rebuilding
                 -- changes the interface - will need to store a hash in .ttc!)
                 logTime "++ Reading imports" $
-                   traverse_ (readImport False) imps
+                   traverse_ (readImport False) imports
 
                 -- Before we process the source, make sure the "hide_everywhere"
                 -- names are set to private (TODO, maybe if we want this?)
@@ -305,7 +296,7 @@ processMod srcf ttcf msg sourcecode origin
                 -- If they haven't changed next time, and the source
                 -- file hasn't changed, no need to rebuild.
                 defs <- get Ctxt
-                put Ctxt (record { importHashes = map snd hs } defs)
+                put Ctxt (record { importHashes = importsNSAndHashes } defs)
                 pure (Just errs))
           (\err => pure (Just [err]))
 

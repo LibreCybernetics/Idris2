@@ -516,15 +516,15 @@ getHashes file b
          pure (sourceFileHash, interfaceHash)
 
 export
-readIFaceHash : (fname : String) -> -- file containing the module
-                Core Int
-readIFaceHash fname
-    = do Right buffer <- coreLift $ readFromFile fname
-            | Left err => pure 0
+readHashes : (fileName : String) -> -- file containing the module
+                Core (String, Int)
+readHashes fileName
+    = do Right buffer <- coreLift $ readFromFile fileName
+            | Left err => pure ("", 0)
          b <- newRef Bin buffer
-         catch (do (_, interfaceHash) <- getHashes fname b
-                   pure interfaceHash)
-               (\err => pure 0)
+         catch (do hashes <- getHashes fileName b
+                   pure hashes)
+               (\err => pure ("", 0))
 
 export
 readImportHashes : (fname : String) -> -- file containing the module
