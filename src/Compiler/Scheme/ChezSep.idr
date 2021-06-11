@@ -21,7 +21,6 @@ import Libraries.Utils.Path
 import Data.List
 import Data.List1
 import Data.Maybe
-import Libraries.Data.NameMap
 import Data.Strings
 import Data.Vect
 
@@ -31,6 +30,9 @@ import System
 import System.Directory
 import System.File
 import System.Info
+
+import Libraries.Data.NameMap
+import Libraries.Utils.String
 
 %default covering
 

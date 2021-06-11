@@ -17,7 +17,6 @@ import Libraries.Utils.Path
 import Data.List
 import Data.List1
 import Data.Maybe
-import Libraries.Data.NameMap
 import Data.Strings
 import Data.Vect
 
@@ -27,6 +26,9 @@ import System
 import System.Directory
 import System.File
 import System.Info
+
+import Libraries.Data.NameMap
+import Libraries.Utils.String
 
 %default covering
 
@@ -56,15 +58,6 @@ findLibs ds
         = if isPrefixOf "lib" d
              then Just (trim (substr 3 (length d) d))
              else Nothing
-
-export
-escapeString : String -> String
-escapeString s = pack $ foldr escape [] $ unpack s
-  where
-    escape : Char -> List Char -> List Char
-    escape '"' cs = '\\' :: '\"' :: cs
-    escape '\\' cs = '\\' :: '\\' :: cs
-    escape c   cs = c :: cs
 
 schHeader : String -> List String -> String
 schHeader chez libs

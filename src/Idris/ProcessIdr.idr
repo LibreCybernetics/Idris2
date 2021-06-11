@@ -320,21 +320,21 @@ process : {auto c : Ref Ctxt Defs} ->
           Doc IdrisAnn -> FileName ->
           (moduleIdent : ModuleIdent) ->
           Core (List Error)
-process buildmsg file ident
-    = do Right res <- coreLift (readFile file)
-               | Left err => pure [FileErr file err]
-         catch (do ttcf <- getTTCFileName file "ttc"
-                   Just errs <- logTime ("+ Elaborating " ++ file) $
-                                   processMod file ttcf buildmsg res ident
+process buildmsg sourceFileName ident
+    = do Right res <- coreLift (readFile sourceFileName)
+               | Left err => pure [FileErr sourceFileName err]
+         catch (do ttcFileName <- getTTCFileName sourceFileName "ttc"
+                   Just errs <- logTime ("+ Elaborating " ++ sourceFileName) $
+                                   processMod sourceFileName ttcFileName buildmsg res ident
                         | Nothing => pure [] -- skipped it
                    if isNil errs
                       then
                         do defs <- get Ctxt
-                           ns <- ctxtPathToNS file
+                           ns <- ctxtPathToNS sourceFileName
                            makeBuildDirectory ns
-                           writeToTTC !(get Syn) ttcf
-                           ttmf <- getTTCFileName file "ttm"
-                           writeToTTM ttmf
+                           writeToTTC !(get Syn) sourceFileName ttcFileName
+                           ttmFileName <- getTTCFileName sourceFileName "ttm"
+                           writeToTTM ttmFileName
                            pure []
                       else do pure errs)
                (\err => pure [err])

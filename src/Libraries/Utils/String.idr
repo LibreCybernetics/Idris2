@@ -20,3 +20,13 @@ export
 lowerFirst : String -> Bool
 lowerFirst "" = False
 lowerFirst str = assert_total (isLower (prim__strHead str))
+
+export
+escapeString : String -> String
+escapeString s = pack $ foldr escape [] $ unpack s
+  where
+    escape : Char -> List Char -> List Char
+    escape '"' cs = '\\' :: '\"' :: cs
+    escape '\'' cs = '\\' :: '\'' :: cs
+    escape '\\' cs = '\\' :: '\\' :: cs
+    escape c   cs = c :: cs
